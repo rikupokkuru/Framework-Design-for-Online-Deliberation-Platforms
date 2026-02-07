@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>議論ルーム選択</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #ffffff;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+
+        .join-form input[type="text"] {
+            padding: 4px 6px;
+            width: 140px;
+        }
+        .join-form button {
+            padding: 4px 10px;
+            margin-left: 4px;
+            background-color: #1da1f2;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+        .join-form button:hover {
+            background-color: #0d8ddb;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-header">
+        <h1>議論ルームβへようこそ</h1>
+        <a href="#" onclick="promptForDevTools()" class="dev-tools-link">
+            ⚙️ 開発者ツール
+        </a>
+    </div>
+        {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    <h2>新しいルームを作成</h2>
+    <form id="create-room-form">
+        <input type="text" name="username" placeholder="ユーザー名" required>
+        <input type="text" name="topic" placeholder="議題（例：日本のエネルギーミックス）" required>
+        <button type="submit">ルームを作成</button>
+    </form>
+
+    <script>
+    document.getElementById("create-room-form").addEventListener("submit", async function(event) {
+        event.preventDefault(); // フォームの通常送信を防止
+        const formData = new FormData(this);
+        const response = await fetch("/create", {
+            method: "POST",
+            body: formData
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            window.location.href = data.url;
+        } else {
+            alert("ルームの作成に失敗しました。");
+        }
+    });
+    </script>
+
+    <h2>既存のルームに参加</h2>
+    <form action="/join" method="post">
+        <input type="text" name="username" placeholder="ユーザー名" required>
+        <input type="text" name="room_id" placeholder="ルームID" required>
+        <button type="submit">参加</button>
+    </form>
+
+    <hr>
+
+    <h2>現在のルーム一覧</h2>
+    {% if rooms %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ルームID</th>
+                    <th>議題</th>
+                    <th>参加</th>
+                    <th>削除</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for room in rooms %}
+                <tr>
+                    <td>{{ room.room_id }}</td>
+                    <td>{{ room.topic }}</td>
+                    <td>
+                        <form action="/join" method="post" class="join-form">
+                            <input type="hidden" name="room_id" value="{{ room.room_id }}">
+                            <input type="text" name="username" placeholder="ユーザー名" required>
+                            <button type="submit">参加</button>
+                        </form>
+                    </td>
+
+                    <td>
+                        <form id="delete-form-{{ room.room_id }}" action="/delete_room" method="post" style="margin:0;">
+                            <input type="hidden" name="room_id" value="{{ room.room_id }}">
+                            <input type="hidden" name="password" value="">
+                            <button type="button" class="delete-btn" onclick="handleDelete('{{ room.room_id }}')">🗑️</button>
+                        </form>
+                    </td>
+                </tr>
+             {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>現在開設されているルームはありません。</p>
+    {% endif %}
+
+    <script>
+        function handleDelete(roomId) {
+            const password = prompt("ルームを削除します。パスワードを入力してください：");
+            if (password === null) { // キャンセルされた場合
+                return;
+            }
+            if (password === "") { // 何も入力されなかった場合
+                alert("パスワードが入力されていません。");
+                return;
+            }
+            
+            // 対応するフォームを見つけて、パスワードをセットして送信
+            const form = document.getElementById(`delete-form-${roomId}`);
+            form.querySelector('input[name="password"]').value = password;
+            form.submit();
+        }
+            function promptForDevTools() {
+            const password = prompt("開発者ツールにアクセスするためのパスワードを入力してください：");
+            if (password !== null) { // キャンセルボタンが押されなかった場合
+                window.location.href = `/dev-tools?password=${encodeURIComponent(password)}`;
+            }
+        }
+    </script>
+</body>
+</html>

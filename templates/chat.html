@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/images/icon.png">
+  <title>議論ルーム - {{ room_id }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="/static/style.css?v=1.0.9" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div id="fixed-action-buttons">
+    <button id="shared-note-btn">📝</button>
+    <button id="proposal-form-btn">📢</button>
+  </div>
+  <div class="header-area">
+    <div>
+      <h2>ルームID: {{ room_id }}</h2>
+      <p>ユーザー名: {{ username }}</p>
+    </div>
+    <div class="header-buttons">
+      <button id="participants-btn">👥 参加者</button>
+      <button id="notification-btn" style="margin-left: 5px; background-color: #17a2b8;">🔕 通知OFF</button> </div>
+    </div>
+  <p class="topic-label"><strong>議題:</strong> {{ topic }}</p>
+
+<div id="participants-modal" class="modal">
+    <div class="modal-content">
+      <span id="participants-close-btn" class="close-btn">&times;</span>
+      <h3 style="margin-top: 0;">参加者一覧</h3>
+      <ul id="participants-list">
+        </ul>
+    </div>
+  </div>
+
+    <div id="proposals-area">
+       <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">現在の提案一覧</h3>
+       <ul id="proposal-list">
+         </ul>
+  </div>
+
+    <div id="chat-scroll-container">
+    <ul id="messages">
+      <li id="history-divider" style="text-align: center; color: gray; font-style: italic; display: none;">
+        --- 過去の発言 ---
+      </li>
+    </ul>
+  </div>
+
+  <div id="replying-to-banner" style="display: none;">
+    <span id="replying-to-text"></span>
+    <button id="cancel-reply-btn">&times;</button>
+  </div>
+
+    <div id="input-area" class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div id="stance-button-group" class="btn-toolbar mb-2" role="toolbar">
+                    <div class="btn-group w-100 mb-1" role="group">
+            <button class="stance-btn btn btn-outline-secondary" data-stance="情報提供" title="情報提供">ℹ️ 情報提供</button>
+            <button class="stance-btn btn btn-outline-secondary" data-stance="提案" title="提案">💡 提案</button>
+            <button class="stance-btn btn btn-outline-secondary" data-stance="質問" title="質問">❓ 質問</button>
+            <button class="stance-btn btn btn-outline-secondary" data-stance="ファシリテーション" title="ファシリテーション">🕑 進行</button>
+          </div>
+                    <div class="btn-group w-100" role="group">
+            <button class="stance-btn btn btn-outline-secondary" data-stance="意見" title="意見">💬 意見</button>
+            <button class="stance-btn btn btn-outline-secondary" data-stance="Geminiへの質問" title="Geminiへの質問">🤖 Geminiへ</button>
+          </div>
+        </div>
+        <div class="textarea-wrapper input-group">
+          <textarea id="message-input" class="form-control" placeholder="メッセージを入力..." maxlength="500" rows="1"></textarea>
+          <button id="send-btn" class="btn btn-primary">送信</button>
+        </div>
+    </div>
+  </div>
+
+    <div class="controls-area">
+    <label for="file-upload" class="file-upload-label">
+    📎 ファイルを選択
+    </label>
+    <input id="file-upload" type="file" style="display: none;">
+    <button id="progress-check-btn">進行状況を確認</button>
+    <button id="facilitate-btn">🤖 AIファシリテーション</button>
+    <span id="file-name"></span>
+  </div>
+    <button id="finish-btn">議論終了</button>
+  <button id="back-to-roomlist-btn">← ルーム一覧に戻る</button>
+
+<div id="progress-modal" class="modal">
+  <div class="modal-content">
+    <span id="progress-close-btn" class="close-btn">&times;</span> <h3 style="margin-top: 0;">議論の進行状況</h3>
+    <div id="progress-content">
+        <p>分析中...</p>
+    </div>
+  </div>
+</div>
+
+  <div id="note-modal" class="modal">
+      <div class="modal-content large">
+        <span id="note-close-btn" class="close-btn">&times;</span>
+        <h3 style="margin-top: 0;">共有ノート</h3>
+        <p style="font-size: 13px; color: #666;">このノートの内容は参加者全員にリアルタイムで同期され、AIによる議事録生成の際に最重要の参考情報として扱われます。</p>
+        <textarea id="shared-note-textarea" placeholder="議論の要点や合意事項などを自由にご記入ください..."></textarea>
+      </div>
+    </div>
+
+    <div id="proposal-form-modal" class="modal">
+      <div class="modal-content large">
+        <span id="proposal-form-close-btn" class="close-btn">&times;</span>
+        <h3 style="margin-top: 0;">5W1H 提案フォーム</h3>
+        <p style="font-size: 13px; color: #666;">このフォームの内容は参加者全員にリアルタイムで同期されます。詳細な提案を共同で作成しましょう。</p>
+
+        <!-- ページネーション -->
+        <div class="proposal-pagination">
+          <button id="proposal-prev-btn" class="btn btn-secondary">&lt; 前の提案</button>
+          <span id="proposal-page-indicator">提案 1 / 1</span>
+          <button id="proposal-next-btn" class="btn btn-secondary">次の提案 &gt;</button>
+          <button id="proposal-add-btn" class="btn btn-primary" style="margin-left: auto;">+ 新しい提案を追加</button>
+        </div>
+
+        <!-- フォーム本体 -->
+        <div id="proposal-form-content">
+          <div class="proposal-form-q">
+            <label for="proposal-q1">Q1: 提案内容を簡潔にご記入ください (What)</label>
+            <textarea id="proposal-q1" data-key="q1" rows="2"></textarea>
+          </div>
+          <div class="proposal-form-q">
+            <label for="proposal-q2">Q2: 何故その提案が大切だと考えますか？ (Why)</label>
+            <textarea id="proposal-q2" data-key="q2" rows="3"></textarea>
+          </div>
+          <div class="proposal-form-q">
+            <label>Q3: どのような手法でその提案を実施しますか？（複数選択可能）(How)</label>
+            
+            <input type="hidden" id="proposal-q6" data-key="q6">
+            
+            <div id="q6-checkbox-container" class="checkbox-group">
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="実践" id="q6-opt1">
+                <label class="form-check-label" for="q6-opt1">実践</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="設備投資" id="q6-opt2">
+                <label class="form-check-label" for="q6-opt2">設備投資</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="研究" id="q6-opt3">
+                <label class="form-check-label" for="q6-opt3">研究</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="情報提供・広報" id="q6-opt4">
+                <label class="form-check-label" for="q6-opt4">情報提供・広報</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="新しい制度構築" id="q6-opt5">
+                <label class="form-check-label" for="q6-opt5">新しい制度構築</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="制度の改正" id="q6-opt6">
+                <label class="form-check-label" for="q6-opt6">制度の改正</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="補助金・助成金" id="q6-opt7">
+                <label class="form-check-label" for="q6-opt7">補助金・助成金</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="教育・人材育成" id="q6-opt8">
+                <label class="form-check-label" for="q6-opt8">教育・人材育成</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input q6-check" type="checkbox" value="多主体連携" id="q6-opt9">
+                <label class="form-check-label" for="q6-opt9">多主体連携</label>
+              </div>
+              <div class="form-check" style="display: flex; align-items: center; gap: 5px;">
+                <input class="form-check-input q6-check" type="checkbox" value="その他" id="q6-opt10">
+                <label class="form-check-label" for="q6-opt10" style="margin-bottom:0;">その他：</label>
+                <input type="text" id="q6-other-text" placeholder="短文記述" class="form-control form-control-sm" style="width: auto; display: inline-block;">
+              </div>
+            </div>
+          </div>
+          <div class="proposal-form-q">
+            <label for="proposal-q3">Q4: いつまでにその提案を実施すべきだと考えますか？ (When)</label>
+            <input type="text" id="proposal-q3" data-key="q3" placeholder="例: 2025年度末までに、など">
+          </div>
+          <div class="proposal-form-q">
+            <label for="proposal-q4">Q5: どこでその提案を実施しますか？ (Where)</label>
+            <input type="text" id="proposal-q4" data-key="q4" placeholder="例: 市内全域の公共施設、など">
+          </div>
+          <div class="proposal-form-q">
+            <label style="border-bottom: 2px solid #eee; display: block; padding-bottom: 5px; margin-bottom: 10px;">
+              Q6: 実施者や対象、ステークホルダーは誰ですか（Who）
+            </label>
+            
+            <input type="hidden" id="proposal-q5" data-key="q5">
+            
+            <div style="margin-left: 20px; padding-left: 15px; border-left: 3px solid #f0f0f0;">
+              
+              <div style="margin-bottom: 15px;">
+                <label for="q5-implementer" style="font-weight: bold; font-size: 13px; color: #555;">【実施者】</label>
+                <p style="font-size: 11px; color: #888; margin: 0 0 5px 0;">※ 提案の主体となる組織や人物</p>
+                <input type="text" id="q5-implementer" class="q5-part" placeholder="例: ○○市、県庁、商店街振興組合 など" style="width: 100%;">
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label for="q5-target" style="font-weight: bold; font-size: 13px; color: #555;">【対象】</label>
+                <p style="font-size: 11px; color: #888; margin: 0 0 5px 0;">※ 提案の恩恵を受ける、あるいは影響を受ける人</p>
+                <input type="text" id="q5-target" class="q5-part" placeholder="例: 市内全域の市民、子育て世帯、中小企業 など" style="width: 100%;">
+              </div>
+
+              <div>
+                <label for="q5-stakeholder" style="font-weight: bold; font-size: 13px; color: #555;">【ステークホルダー】</label>
+                <p style="font-size: 11px; color: #888; margin: 0 0 5px 0;">※ 協力が必要な相手、関係する団体など</p>
+                <textarea id="q5-stakeholder" class="q5-part" rows="4" placeholder="例: 地域の大学、NPO法人、地元企業、教育委員会、自治会 など" style="width: 100%;"></textarea>
+              </div>
+            
+            </div>
+          </div>
+          <div class="proposal-form-q">
+            <label>Q7: 提案はフォアキャスティングで考えましたか？バックキャスティングで考えましたか？</label>
+            <div class="radio-group">
+              <input type="radio" id="proposal-q7-forecast" name="proposal-q7" value="forecast" data-key="q7">
+              <label for="proposal-q7-forecast">フォアキャスティング</label>
+              <input type="radio" id="proposal-q7-backcast" name="proposal-q7" value="backcast" data-key="q7">
+              <label for="proposal-q7-backcast">バックキャスティング</label>
+            </div>
+          </div>
+        </div> <button id="post-proposal-to-chat-btn" class="btn btn-success" style="margin-top: 15px; width: 100%;">
+          ✅ この内容でチャットに「提案」として投稿する
+        </button>
+        <button id="download-word-btn" class="btn btn-primary" style="margin-top: 10px; width: 100%; background-color: #2b579a; border-color: #2b579a;">
+            📄 すべての提案をWordでダウンロード
+        </button>
+      </div>
+    </div>
+  </div>
+
+    <script>
+      const username = "{{ username }}";
+      const roomId = "{{ room_id }}";
+      const vapidPublicKey = "{{ vapid_public_key }}";
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script src="/static/chat.js?v=1.0.6"></script>
+
+  </body>
+</html>
